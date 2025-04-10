@@ -67,7 +67,9 @@ do
             sprite = sprite,
             _id = cuid(),
             update = function(tick)
-            
+                if self.update do
+                    self
+                end
             end,
         }
         setmetatable(e, meta_entity)
