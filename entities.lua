@@ -68,7 +68,7 @@ do
             _id = cuid(),
             update = function(tick)
                 if self.update do
-                    self
+                  -- TODO ---------------------------
                 end
             end,
         }

@@ -1,6 +1,8 @@
 *.html
 *.js
 log.txt
+config.txt
+activity_log.txt
 sdl_controllers.txt
 backup
 bbs
@@ -8,3 +10,4 @@ carts
 cdata
 cstore
 plates
+.vscode
