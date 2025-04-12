@@ -66,7 +66,7 @@ do
             y = y,
             sprite = sprite,
             _id = cuid(),
-            update = function(tick)
+            update = function(self, tick)
                 if self.update do
                   -- TODO ---------------------------
                 end

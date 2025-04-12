@@ -1,7 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
+#include helpfuncs.lua
 #include entities.lua
+#include room.lua
 #include dungeon.lua
 
 
@@ -13,18 +15,24 @@ _entities.Player = create_entity(0, 0, nil)
 -- MAIN GAME FUNCTIONS 
 
 function _init()
-
+    level = Dungeon.new(32, 32)
+    level:initMap()
+    level:generateRooms()
+    local root = level:getRoomTree()
+    level:buildCorridors(root)
+    level:printMap()
 end
 
-function _update60()
-    entities_update()
-end
+--function _update60()
+--    entities_update()
+--end
 
 
-function _draw()
-    cls()
-    entities_draw()
-end
+--function _draw()
+--    cls()
+--    entities_draw()
+    
+--end
 
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

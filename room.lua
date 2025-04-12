@@ -36,8 +36,8 @@ end
 
 function Room:distanceTo(other)
   -- returns distance from self to other room's center.
-    local op1 = abs(self.center[1]-other.center[1])
-    local op2 = abs(self.center[1]-other.center[1])
-    
-    return sqrt(op1*op1+op2*op2)
+    local op1 = (self.center[1]-other.center[1])
+    local op2 = (self.center[2]-other.center[2])
+
+    return sqrt(abs(op1*op1)+abs(op2*op2))
 end
