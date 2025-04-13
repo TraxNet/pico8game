@@ -1,17 +1,32 @@
+--[[
+    *An adaptation of Lua-Dungeon-Generator by Veronica Hage 
+    (https://github.com/vronc/Lua-Dungeon-Generator/tree/master) to pico-8 
+  
+    It takes around 1800 tokens, no optimizations at this stage
+]]
+
 
 Dungeon = {
     Tile_Types = {
-        Empty                   = 0x00,
-        Soil                    = 0x01,
-        SoilRocks               = 0x02,
-        Water                   = 0x03,
+        Empty                       = 0x00,
+        Soil                        = 0x01,
+        SoilRocks                   = 0x02,
+        Water                       = 0x03,
         --- Above 0x20 values are non walkable types (i.e walls)
-        Wall                    = 0x20,
-        WallLeftUpperCornner    = 0x21,
-        WallRightUpperCornner   = 0x22,
-        WallLeftBottomCornner   = 0x23,
-        WallRightBottomCornner  = 0x24,
-        InnerWall               = 0x25,
+        Wall                        = 0x20,
+        WallDown                    = 0x21,
+        WallLeft                    = 0x22,
+        WallRight                   = 0x23,
+        WallLeftUpperCornner        = 0x24,
+        WallRightUpperCornner       = 0x25,
+        WallLeftBottomCornner       = 0x26,
+        WallRightBottomCornner      = 0x27,
+        WallLeftUpperCornnerOpen    = 0x28,
+        WallRightUpperCornnerOpen   = 0x29,
+        WallLeftBottomCornnerOpen   = 0x2A,
+        WallRightBottomCornnerOpen  = 0x2B,
+        InnerWall                   = 0x2C,
+        FullWall                    = 0x2D,
     }
 }
 Dungeon.Type_Prints = {
@@ -20,14 +35,22 @@ Dungeon.Type_Prints = {
     [Dungeon.Tile_Types.SoilRocks] = ":",
     [Dungeon.Tile_Types.Water] = "*",
     [Dungeon.Tile_Types.Wall] = "#",
+    [Dungeon.Tile_Types.WallDown] = "#",
+    [Dungeon.Tile_Types.WallLeft] = "#",
+    [Dungeon.Tile_Types.WallRight] = "#",
     [Dungeon.Tile_Types.WallLeftUpperCornner] = "/",
     [Dungeon.Tile_Types.WallRightUpperCornner] = "\\",
     [Dungeon.Tile_Types.WallLeftBottomCornner] = "*",
     [Dungeon.Tile_Types.WallRightBottomCornner] = "+",
+    [Dungeon.Tile_Types.WallLeftUpperCornnerOpen] = "1",
+    [Dungeon.Tile_Types.WallRightUpperCornnerOpen] = "2",
+    [Dungeon.Tile_Types.WallRightBottomCornnerOpen] = "3",
+    [Dungeon.Tile_Types.WallLeftBottomCornnerOpen] = "4",
     [Dungeon.Tile_Types.InnerWall] = "z",
+    [Dungeon.Tile_Types.FullWall] = "O",
 }
 Dungeon.__index = Dungeon
-Dungeon.MIN_ROOM_SIZE = 2
+Dungeon.MIN_ROOM_SIZE = 1
 
 
 function Dungeon.new(height, width)
@@ -41,22 +64,17 @@ function Dungeon.new(height, width)
       entrances = {},
       staircases = {},
       rootRoom=nil,
-      endRoom=nil
+      endRoom=nil,
+      maxRoomSize = ceil(min(height, width)/10)+3,
+      maxRooms = ceil(max(height, width)/Dungeon.MIN_ROOM_SIZE)+15,
+      
     }
-    dungeon.maxRoomSize = ceil(min(height, width)/10)+5
-    dungeon.maxRooms = ceil(max(height, width)/Dungeon.MIN_ROOM_SIZE)
-    -- dungeon amount of random tiles built when generating corridors:
-    dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)
 
+    dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)
+    --dungeon.scatteringFactor = 0
     setmetatable(dungeon, Dungeon)
-   
 
     return dungeon
-end
-
-
-function Dungeon:generate()
-
 end
 
 
@@ -79,11 +97,11 @@ end
 
 
 function Dungeon:printMap()
-    printh("printMap")
-    for i=-1,self.height+1 do
+    --printh("printMap")
+    for i=0,self.height do
         local row = " "
         --self.matrix[i] = {} 
-        for j=-1,self.width+1 do
+        for j=0,self.width do
             local class = self.matrix[i][j].class
             row = row..Dungeon.Type_Prints[class]
         end
@@ -114,13 +132,18 @@ function Dungeon:generateRoom()
     for i=startRow, min(self.height,startRow+height) do
         for j=startCol, min(self.width, startCol+width) do
             --printh("gen"..i.." "..j)
-            if (self.matrix[i][j].class != Dungeon.Tile_Types.Empty) then
+            if (self.matrix[i][j].class != Dungeon.Tile_Types.Empty or 
+                self.matrix[i-1][j].class != Dungeon.Tile_Types.Empty or 
+                self.matrix[i+1][j].class != Dungeon.Tile_Types.Empty or
+                self.matrix[i][j-1].class != Dungeon.Tile_Types.Empty or
+                self.matrix[i][j+1].class != Dungeon.Tile_Types.Empty) then
                 return            -- Room is overlapping other room->room is discarded
             end
         end
     end
-    self:buildRoom(startRow, startCol,  startRow+height,  startCol+width)
+    self:buildRoom(startRow, startCol,  min(self.height-1, startRow+height),  min(self.width-1, startCol+width))
 end
+
 
 function Dungeon:buildRoom(startR, startC, endR, endC)
     -- init room object and paint room onto tiles.
@@ -144,28 +167,48 @@ function Dungeon:buildRoom(startR, startC, endR, endC)
     self:addWalls(max(0, startR-1), max(0, startC-1), min(self.height, endR+1), min(self.width, endC+1))
 end
 
+
 function Dungeon:addWalls(startR, startC, endR, endC)
     -- Places walls on circumference of given rectangle.
     
     -- Upper and lower sides
-    for j=startC,endC do
+    --[[for j=startC+1,endC-1 do
+        self:placeWall(startR, j, Dungeon.Tile_Types.WallDown)
+        self:placeWall(endR, j, Dungeon.Tile_Types.Wall)
+    end
+    
+    -- Left and right sides
+    for i=startR+1,endR-1 do
+        self:placeWall(i, startC, Dungeon.Tile_Types.WallRight)
+        self:placeWall(i, endC, Dungeon.Tile_Types.WallLeft)
+    end
+    self:placeWall(startR, startC, Dungeon.Tile_Types.WallLeftUpperCornner)
+    self:placeWall(startR, endC, Dungeon.Tile_Types.WallRightUpperCornner)
+    self:placeWall(endR, startC, Dungeon.Tile_Types.WallLeftBottomCornner)
+    self:placeWall(endR, endC, Dungeon.Tile_Types.WallRightBottomCornner)
+    ]]
+    for j=startC+1,endC-1 do
         self:placeWall(startR, j)
         self:placeWall(endR, j)
     end
     
     -- Left and right sides
-    for i=startR,endR do
+    for i=startR+1,endR-1 do
         self:placeWall(i, startC)
         self:placeWall(i, endC)
     end
+    self:placeWall(startR, startC)
+    self:placeWall(startR, endC)
+    self:placeWall(endR, startC)
+    self:placeWall(endR, endC)
 end
 
-function Dungeon:placeWall(r,c)
-    -- Places wall at given coordinate. Could either place
-    -- regular wall, soil or mineral vein
+function Dungeon:placeWall(r,c, class)
+    class  = class or Dungeon.Tile_Types.Wall
+
     --printh("placeWall:"..r..","..c)
     local tile = self:getTile(r,c)
-    tile.class = Dungeon.Tile_Types.Wall
+    tile.class = class
     
    
 end
@@ -189,9 +232,11 @@ function Dungeon:buildCorridors(root)
         self:buildCorridor(root, neigh)
         self:buildCorridors(neigh)
     end 
+
+    --self:updateWallTypes()
 end
   
-  -- ##### -- ##### -- ##### -- ##### -- ##### -- ##### -- ##### -- ##### -- ##### -- 
+
   
 function Dungeon:buildCorridor(from, to)
     -- Parameters from and to are both Room-objects.
@@ -219,10 +264,29 @@ function Dungeon:buildTile(r, c)
     local adj = getAdjacentPos(r,c)
     self:getTile(r, c).class = Dungeon.Tile_Types.Soil
     for i=1,#adj do
-            --printh("adj"..i)
+        
         r, c = adj[i][1], adj[i][2]
-        if not (self:getTile(r,c).class == Dungeon.Tile_Types.Soil) then
-            self:placeWall(r,c)
+        printh("adj"..r.." "..c)
+        local left = self:getTile(r, c-1).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
+        local right = self:getTile(r, c+1).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
+        local up = self:getTile(r-1, c).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
+        local down = self:getTile(r+1, c).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
+
+        if not (self:getTile(r,c).class == Dungeon.Tile_Types.Soil or self:getTile(r,c).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
+            --[[ if left and not (up or down or right) then
+                self:placeWall(r, c, Dungeon.Tile_Types.WallLeft)
+            elseif right and not (up or down or left) then
+                self:placeWall(r, c, Dungeon.Tile_Types.WallRight)
+            elseif up and not (right or down) then
+                self:placeWall(r, c, Dungeon.Tile_Types.WallBottom)
+            elseif down and not (right or down) then
+                self:placeWall(r, c, Dungeon.Tile_Types.Wall)
+            else
+                self:placeWall(r, c, Dungeon.Tile_Types.Wall)
+            end
+            ]]
+            --self:placeWall(r, c, Dungeon.Tile_Types.FullWall)
+            self:placeWall(r, c)
         end
     end
  end
@@ -231,17 +295,70 @@ function Dungeon:buildTile(r, c)
  function Dungeon:updateWallTypes()
     for i=1,self.width do
         for j=1,self.height do   
-            local tile = self:getTile(i, i)
+            local tile = self:getTile(i, j)
 
             if tile.class == Dungeon.Tile_Types.Wall then
                 --local adj = getAdjacentPos(i,j)
+                --printh("u"..self:getTile(i-1, j).class)
+                
+                local left = self:getTile(i, j-1).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall 
+                local right = self:getTile(i, j+1).class&Dungeon.Tile_Types.Wall  == Dungeon.Tile_Types.Wall 
+                local up = self:getTile(i-1, j).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall
+                local down = self:getTile(i+1, j).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall 
+                printh(left)
+                
+                
+             
+                
 
-                local left = self:getTile(i-1, j)
-                local right = self:getTile(i+1, j)
-                local up = self:getTile(i, j-1)
-                local down = self:getTile(i, j+1)
+                if left and not right then
+                   if not up and not down then
+                        --
+                        -- [ ][x]
+                        --
+                    elseif (not down) and up then
+                        --    [ ]
+                        -- [ ][4] 
+                        --
+                        tile.class = Dungeon.Tile_Types.WallRightBottomCornnerOpen
+                    elseif not up then
+                        --    
+                        -- [ ][2]
+                        --    [ ]
+                        tile.class = Dungeon.Tile_Types.WallRightUpperCornnerOpen
+                    end
+                elseif right and not left then
+                    if not up and not down then
+                        --
+                        -- [x][ ]
+                        --
+                        
+                    elseif not up and down then
+                        --    
+                        -- [1][ ] 
+                        -- [ ]
+                        tile.class = Dungeon.Tile_Types.WallLeftUpperCornnerOpen
+                    elseif not down and up then
+                        -- [ ]   
+                        -- [3][ ]
+                        --  
+                        tile.class = Dungeon.Tile_Types.WallLeftBottomCornnerOpen
+                    end    
+                end
                 
             end
         end
     end
  end
+
+
+ function Dungeon:renderToMap()
+    for i=0,self.width do
+        for j=0,self.height do   
+            local tile = self:getTile(i, j)
+            if(tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
+                mset(j,i, 16+band(tile.class,0x0F))
+            end
+        end
+    end
+end
