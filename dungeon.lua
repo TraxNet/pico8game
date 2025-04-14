@@ -12,6 +12,8 @@ Dungeon = {
         Soil                        = 0x01,
         SoilRocks                   = 0x02,
         Water                       = 0x03,
+        DownStairCase               = 0x05,
+        UpStairCase                 = 0x06,
         --- Above 0x20 values are non walkable types (i.e walls)
         Wall                        = 0x20,
         WallDown                    = 0x21,
@@ -34,6 +36,8 @@ Dungeon.Type_Prints = {
     [Dungeon.Tile_Types.Soil] = ".",
     [Dungeon.Tile_Types.SoilRocks] = ":",
     [Dungeon.Tile_Types.Water] = "*",
+    [Dungeon.Tile_Types.DownStairCase] = "u",
+    [Dungeon.Tile_Types.UpStairCase] = "$",
     [Dungeon.Tile_Types.Wall] = "#",
     [Dungeon.Tile_Types.WallDown] = "#",
     [Dungeon.Tile_Types.WallLeft] = "#",
@@ -67,10 +71,10 @@ function Dungeon.new(height, width)
       endRoom=nil,
       maxRoomSize = ceil(min(height, width)/10)+3,
       maxRooms = ceil(max(height, width)/Dungeon.MIN_ROOM_SIZE)+15,
-      
+      walls = {}
     }
 
-    dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)
+    dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)+3
     --dungeon.scatteringFactor = 0
     setmetatable(dungeon, Dungeon)
 
@@ -87,6 +91,7 @@ function Dungeon:initMap()
         for j=-1,self.width+1 do
             self.matrix[i][j] = {
                 class = Dungeon.Tile_Types.Empty,
+                id = "id"..i..j,
                 roomId = 0
             }
         end
@@ -131,17 +136,15 @@ function Dungeon:generateRoom()
   
     for i=startRow, min(self.height,startRow+height) do
         for j=startCol, min(self.width, startCol+width) do
-            --printh("gen"..i.." "..j)
-            if (self.matrix[i][j].class != Dungeon.Tile_Types.Empty or 
-                self.matrix[i-1][j].class != Dungeon.Tile_Types.Empty or 
-                self.matrix[i+1][j].class != Dungeon.Tile_Types.Empty or
-                self.matrix[i][j-1].class != Dungeon.Tile_Types.Empty or
-                self.matrix[i][j+1].class != Dungeon.Tile_Types.Empty) then
+       
+            if self.matrix[i][j].class != Dungeon.Tile_Types.Empty then
+   
+                
                 return            -- Room is overlapping other room->room is discarded
             end
         end
     end
-    self:buildRoom(startRow, startCol,  min(self.height-1, startRow+height),  min(self.width-1, startCol+width))
+    self:buildRoom(startRow, startCol,  min(self.height-2, startRow+height),  min(self.width-2, startCol+width))
 end
 
 
@@ -171,46 +174,26 @@ end
 function Dungeon:addWalls(startR, startC, endR, endC)
     -- Places walls on circumference of given rectangle.
     
-    -- Upper and lower sides
-    --[[for j=startC+1,endC-1 do
-        self:placeWall(startR, j, Dungeon.Tile_Types.WallDown)
-        self:placeWall(endR, j, Dungeon.Tile_Types.Wall)
-    end
-    
-    -- Left and right sides
-    for i=startR+1,endR-1 do
-        self:placeWall(i, startC, Dungeon.Tile_Types.WallRight)
-        self:placeWall(i, endC, Dungeon.Tile_Types.WallLeft)
-    end
-    self:placeWall(startR, startC, Dungeon.Tile_Types.WallLeftUpperCornner)
-    self:placeWall(startR, endC, Dungeon.Tile_Types.WallRightUpperCornner)
-    self:placeWall(endR, startC, Dungeon.Tile_Types.WallLeftBottomCornner)
-    self:placeWall(endR, endC, Dungeon.Tile_Types.WallRightBottomCornner)
-    ]]
-    for j=startC+1,endC-1 do
+    for j=startC,endC do
         self:placeWall(startR, j)
         self:placeWall(endR, j)
     end
     
     -- Left and right sides
-    for i=startR+1,endR-1 do
+    for i=startR,endR do
         self:placeWall(i, startC)
         self:placeWall(i, endC)
     end
-    self:placeWall(startR, startC)
-    self:placeWall(startR, endC)
-    self:placeWall(endR, startC)
-    self:placeWall(endR, endC)
+
 end
 
 function Dungeon:placeWall(r,c, class)
-    class  = class or Dungeon.Tile_Types.Wall
+    class  = class or Dungeon.Tile_Types.Wall + flr(rnd(3))
 
     --printh("placeWall:"..r..","..c)
     local tile = self:getTile(r,c)
     tile.class = class
     
-   
 end
 
 function Dungeon:getRoomTree()
@@ -266,99 +249,335 @@ function Dungeon:buildTile(r, c)
     for i=1,#adj do
         
         r, c = adj[i][1], adj[i][2]
-        printh("adj"..r.." "..c)
-        local left = self:getTile(r, c-1).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
-        local right = self:getTile(r, c+1).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
-        local up = self:getTile(r-1, c).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
-        local down = self:getTile(r+1, c).class == Dungeon.Tile_Types.Soil or self:getTile(r, c-1).class == Dungeon.Tile_Types.Empty
 
-        if not (self:getTile(r,c).class == Dungeon.Tile_Types.Soil or self:getTile(r,c).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
-            --[[ if left and not (up or down or right) then
-                self:placeWall(r, c, Dungeon.Tile_Types.WallLeft)
-            elseif right and not (up or down or left) then
-                self:placeWall(r, c, Dungeon.Tile_Types.WallRight)
-            elseif up and not (right or down) then
-                self:placeWall(r, c, Dungeon.Tile_Types.WallBottom)
-            elseif down and not (right or down) then
-                self:placeWall(r, c, Dungeon.Tile_Types.Wall)
-            else
-                self:placeWall(r, c, Dungeon.Tile_Types.Wall)
-            end
-            ]]
-            --self:placeWall(r, c, Dungeon.Tile_Types.FullWall)
+        if not (self:getTile(r,c).class == Dungeon.Tile_Types.Soil ) then
             self:placeWall(r, c)
         end
     end
  end
 
 
- function Dungeon:updateWallTypes()
-    for i=1,self.width do
-        for j=1,self.height do   
-            local tile = self:getTile(i, j)
+ --[[function Dungeon:lineCol(from, to)
+    local dx = to.x - from.x
+    local dy = to.y - from.y
+    local m = dy/dx
+    for x=from.x,to.x do
+        local y = flr(m*(x - from.x) + from.y)
 
-            if tile.class == Dungeon.Tile_Types.Wall then
-                --local adj = getAdjacentPos(i,j)
-                --printh("u"..self:getTile(i-1, j).class)
-                
-                local left = self:getTile(i, j-1).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall 
-                local right = self:getTile(i, j+1).class&Dungeon.Tile_Types.Wall  == Dungeon.Tile_Types.Wall 
-                local up = self:getTile(i-1, j).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall
-                local down = self:getTile(i+1, j).class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall 
-                printh(left)
-                
-                
-             
-                
+        --printh("from:"..from.x..""..from.y.." to:"..to.x.." "..to.y.." line:"..x.." "..y)
+        pset(x*8, y*8, 5)
+        local tile = self:getTile(y, x)
+        if tile and (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall or tile.class == Dungeon.Tile_Types.Empty) then
+            return true
+        end
+       
+    end
 
-                if left and not right then
-                   if not up and not down then
-                        --
-                        -- [ ][x]
-                        --
-                    elseif (not down) and up then
-                        --    [ ]
-                        -- [ ][4] 
-                        --
-                        tile.class = Dungeon.Tile_Types.WallRightBottomCornnerOpen
-                    elseif not up then
-                        --    
-                        -- [ ][2]
-                        --    [ ]
-                        tile.class = Dungeon.Tile_Types.WallRightUpperCornnerOpen
-                    end
-                elseif right and not left then
-                    if not up and not down then
-                        --
-                        -- [x][ ]
-                        --
-                        
-                    elseif not up and down then
-                        --    
-                        -- [1][ ] 
-                        -- [ ]
-                        tile.class = Dungeon.Tile_Types.WallLeftUpperCornnerOpen
-                    elseif not down and up then
-                        -- [ ]   
-                        -- [3][ ]
-                        --  
-                        tile.class = Dungeon.Tile_Types.WallLeftBottomCornnerOpen
-                    end    
+    return false
+ end]]
+
+
+ --[[function Dungeon:lineCol(x0, y0, x1, y1, tile_id)
+    local dx = x1 - x0;
+    local dy = y1 - y0;
+
+        if (dx ~= 0) then
+            m = dy / dx;
+        else 
+            m = sgn(dy)
+        end
+
+        local b = y0 - m*x0;
+        if x1 > x0 then
+            dx = 1
+        else
+            dx = -1
+        end
+        while x0 ~= x1 do
+            x0 = (x0 + dx)
+            y0 = (m*x0 + b);
+            
+
+            local tile = self:getTile(flr(y0), flr(x0))
+            if tile and (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall or tile.class == Dungeon.Tile_Types.Empty) then
+                if tile.id == tile_id then 
+                    return true 
                 end
-                
+
+                return false
+            end
+
+            pset(flr(x0)*8+4, flr(y0)*8+4, 8)
+        end
+
+ 
+
+    return false
+ end
+ ]]
+
+ function lineCircleIntersect(_cx, _cy, _r, _x1, _y1, _x2, _y2)
+    local _cx = _x1 - _cx
+    local _cy = _y1 - _cy
+
+    local _vx  = _x2 - _x1
+    local _vy  = _y2 - _y1
+    local _a   = _vx * _vx + _vy * _vy
+    local _b   = 2.0 * (_vx * _cx + _vy * _cy)
+    local _c   = _cx * _cx + _cy * _cy - _r * _r
+    local _det = _b * _b - 4.0 * _a * _c
+
+    if (_a <= 0.000001 or _det < 0) then
+        return false;
+    elseif (_det == 0) then
+        --local var _t = -_b / (2 * _a);
+        --local var _p1 = { X : _x1 + _t * _vx, Y : _y1 + _t * _vy };
+        --return [_p1, _p1];
+        return false
+    else
+        --printh("intersec")
+        
+    
+        _det = sqrt(_det)
+        local _t1 = (-_b - _det) / (2 * _a)
+        local _t2 = (-_b + _det) / (2 * _a)
+
+        if( _t1 >= 0 and _t1 <= 1 ) then
+
+            return true 
+        end
+
+        if( _t2 >= 0 and _t2 <= 1 ) then
+            return true 
+        end
+        --[[
+        // El primer punto es el más cercano a [_x1, _y1]
+        return [{ X : _x1 + _t1 * _vx, Y : _y1 + _t1 * _vy },
+                { X : _x1 + _t2 * _vx, Y : _y1 + _t2 * _vy }];
+        ]]
+        return false
+    end
+ end
+
+
+ function Dungeon:checkTileVisibility(r, c, y, x)
+    for w in all(self.walls) do
+       
+        if (w.r != r) and (w.c != c) then
+            --printh("w "..w.r.." "..w.c)
+            if lineCircleIntersect(w.c, w.r, 1, x, y, c, r) then return false end
+        end
+    end
+
+    return true
+ end
+
+ function Dungeon:computeVisibility()
+    for i=0,self.height do
+        for j=0,self.width do   
+
+            local tile = self:getTile(i, j)
+            if tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then 
+                add(self.walls, {r=i, c=j})
             end
         end
     end
  end
 
 
- function Dungeon:renderToMap()
-    for i=0,self.width do
-        for j=0,self.height do   
+ function Dungeon:lineCol(_x0, _y0, x1, y1, tile_id)
+    local x0 = _x0
+    local y0 = _y0
+    local dx = x1 - x0;
+    local dy = y1 - y0;
+    local stepx, stepy
+
+    if dy < 0 then
+        dy = -dy
+        stepy = -1
+    else
+        stepy = 1
+    end
+
+    if dx < 0 then
+        dx = -dx
+        stepx = -1
+    else
+        stepx = 1
+    end
+
+    
+
+    --self.buffer[x0 + y0 * pitch] = color
+    if dx > dy then
+        local fraction = dy - ( dx >> 1 )
+        --local fraction = dy - dx*0.5
+        while x0 ~= x1 do
+            if fraction >= 0 then
+                y0 = y0 + stepy
+                fraction = fraction - dx
+            end
+            x0 = x0 + stepx
+            fraction = fraction + dy
+
+            local flrx0, flry0 = flr(y0), flr(x0)
+
+            
+            local tile = self:getTile(y0, x0)
+            if tile.id == tile_id then 
+                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
+                return true 
+            end
+
+            
+            if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) or (tile.class == Dungeon.Tile_Types.Empty) then
+                
+                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
+                return false
+            end
+
+            if pget(flrx0, flry0) != 12 then
+                pset(flr(x0)*1+4, flr(y0)*1+4, 8)
+            end
+            --self.buffer[flr(y0) * pitch + flr(x0)] = color
+        end
+    else
+        local fraction = dx - (dy >> 1)
+        --local fraction = dx - dy*0.5
+        while y0 ~= y1 do
+            if fraction >= 0 then
+                x0 = x0 + stepx
+                fraction = fraction - dy
+            end
+            y0 = y0 + stepy
+            fraction = fraction + dx
+
+            local tile = self:getTile(y0, x0)
+            if tile.id == tile_id then 
+                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
+                return true 
+            end
+
+            if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) or (tile.class == Dungeon.Tile_Types.Empty) then
+                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
+                return false
+            end
+
+            if pget(flr(x0), flr(y0)) != 12 then
+                pset(flr(x0)*1+4, flr(y0)*1+4, 8)
+            end
+            --self.buffer[flr(y0) * pitch + flr(x0)] = color
+        end
+    end
+
+    return true
+ end
+
+
+ function Dungeon:renderToMap(y, x)
+    for i=0,self.height do
+        for j=0,self.width do   
+
             local tile = self:getTile(i, j)
-            if(tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
-                mset(j,i, 16+band(tile.class,0x0F))
+            if  tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then
+                mset(j,i, 16+6)
+            end
+
+            if tile.class != Dungeon.Tile_Types.Empty then
+            
+                local d = getDist({y, x}, {i, j})
+                local dist = d
+                local visible = self:lineCol(x, y, j, i, tile.id)
+                if visible then
+                    
+                    if dist >= 7 then
+                        dist = 6
+                    elseif dist > 6 then
+                
+                        dist = 3
+                    elseif dist > 5 then
+                
+                        dist = 3
+                    elseif dist <= 4 then
+                        dist = 0
+                    end  
+            
+                end
+            
+                if dist < 1.5 then
+                    dist = 0
+                end
+                
+                
+                --printh(dist)
+                
+                if(visible and tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
+                    --if dist == 6 then printh("we"..d.." "..y.." "..x.." ".." "..i.." "..j.." v"..tonum(visible)) end
+                    --mset(j,i, 16+band(tile.class,0x0F)+dist)
+                    mset(j,i, 16)
+                elseif dist != 9 and tile.class == Dungeon.Tile_Types.DownStairCase then
+                    
+                    mset(j,i, 0x05)
+                    
+                elseif dist != 9 and tile.class == Dungeon.Tile_Types.UpStairCase then
+                    mset(j,i, 0x06)
+                end
             end
         end
     end
+
+    pset(x*1+4, y*1+4, 10)
 end
+
+
+function Dungeon:getRandRoom()
+    -- return: Random room in level
+    local i = flr(rnd(#self.rooms+1))
+    return self.rooms[i]
+end
+
+
+function Dungeon:addStaircases(maxStaircases)
+    -- Adds both descending and ascending staircases to random rooms.
+    -- Number of staircases depend on number of rooms.
+    
+    if (not maxStaircases) or (maxStaircases > #self.rooms) then 
+        maxStaircases = ceil(#self.rooms-(#self.rooms/2))+1 
+    end
+    local staircases = 2 --rnd(2,maxStaircases)
+
+    repeat
+        local room = self:getRandRoom()
+        if room and not room.hasStaircase or #self.rooms == 1 then
+            self:placeStaircase(room, staircases)
+            staircases = staircases-1
+        end
+    until staircases==0
+end
+
+
+function Dungeon:placeStaircase(room, staircases)
+    -- Places staircase in given room. 
+    -- Position is random number of steps away from center.
+    
+    local steps = flr(rnd(self.maxRoomSize/2))
+    
+    local nrow, ncol = room.center[1], room.center[2]
+    repeat 
+        row, col = nrow, ncol
+        repeat
+            nrow, ncol = getRandNeighbour(row, col)
+        until self:getTile(nrow, ncol).class == Dungeon.Tile_Types.Soil
+        steps=steps-1
+    until (self:getTile(nrow, ncol).roomId ~= room.id or steps <= 0)
+        
+    if staircases%2 == 0 then 
+        self:getTile(row, col).class=Dungeon.Tile_Types.DownStairCase
+    else
+        self:getTile(row, col).class=Dungeon.Tile_Types.UpStairCase
+        self.startPosition = {y = row, x = col}
+    end
+
+    room.hasStaircase = true
+    add( self.staircases, { row, col } )
+  end

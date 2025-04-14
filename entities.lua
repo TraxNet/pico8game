@@ -67,9 +67,10 @@ do
             sprite = sprite,
             _id = cuid(),
             update = function(self, tick)
-                if self.update do
-                  -- TODO ---------------------------
-                end
+              
+            end,
+            draw = function(self, tick)
+                
             end,
         }
         setmetatable(e, meta_entity)
@@ -84,7 +85,7 @@ do
     
     function entities_draw()
         for key, entity in pairs(_entities) do
-            entity:update()
+            entity:draw()
         end
     end
 

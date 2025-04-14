@@ -49,14 +49,14 @@ end
 function getRandNeighbour(row, col, notDiag)
   if notDiag then 
     local f = {-1, 1}
-    local d = f[random(1,2)]
-    if random()>0.5 then
+    local d = f[flr(rnd()+1)]
+    if rnd()>0.5 then
       return row+d, col
     else
       return row, col+d
     end
   else
-    local dir={ random(-1,1), random(-1,1) }
+    local dir={ rnd({-1, 1}), rnd({-1, 1}) }
     return row+dir[1], col+dir[2]
   end
 end
@@ -123,7 +123,7 @@ end
 function getDist(start, goal)
   
   return sqrt(
-    abs(goal[1]-start[1])*abs(goal[1]-start[1])+
-    abs(goal[2]-start[2])*abs(goal[2]-start[2])
+    (goal[1]-start[1])^2+
+    (goal[2]-start[2])^2
     )
 end  
