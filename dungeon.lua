@@ -272,21 +272,21 @@ function Dungeon:buildTile(r, c)
  function Dungeon:renderTile(x0, y0, tile_id)
         local tile = self:getTile(y0, x0)
         if tile.id == tile_id then 
-            --pset(x0*1+4, y0*1+4, 12)
+            -- There is visibility with the intended tile
+
             if tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then                
                 mset(x0,y0, 16+band(tile.class,0x0F))
                 self.visibilityMap[y0][x0] = 12
-                --pset(x0, y0, 12)
+      
             else
                 self.visibilityMap[y0][x0] = 8
-                --pset(x0, y0, 8)
             end
 
             tile.wv = true
             return true 
         end
 
-        
+        -- We hit another wall
         if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
             mset(x0,y0, 16+band(tile.class,0x0F))
             self.visibilityMap[y0][x0] = 12
@@ -294,12 +294,20 @@ function Dungeon:buildTile(r, c)
             return false
         end
 
-        if self.visibilityMap[y0][x0] != 12 then
-            self.visibilityMap[y0][x0] = 8
-            --pset(x0, y0, 8)
+        -- We hit ground or another stuff
+       -- if self.visibilityMap[y0][x0] != 12 then
+        if tile.class == Dungeon.Tile_Types.DownStairCase then             
+            mset(x0,y0, 0x05)     
+        elseif tile.class == Dungeon.Tile_Types.Soil then
+            mset(x0,y0, 0x07) 
+        elseif tile.class == Dungeon.Tile_Types.UpStairCase then
+            mset(x0,y0, 0x06)
         end
+        self.visibilityMap[y0][x0] = 8
+            --pset(x0, y0, 8)
+       -- end
 
-        tile.wv = false
+        tile.wv = true
         return nil
  end
 
@@ -334,8 +342,7 @@ function Dungeon:buildTile(r, c)
         stepx = 1
     end
 
-    
-    --self.buffer[x0 + y0 * pitch] = color
+
     if dx > dy then
         local fraction = dy - ( dx >> 1 )
         --local fraction = dy - dx*0.5
@@ -349,8 +356,7 @@ function Dungeon:buildTile(r, c)
 
             local visible =  self:renderTile(x0, y0, _tile.id)
             if visible != nil then return visible end
-            
-            --self.buffer[flr(y0) * pitch + flr(x0)] = color
+
         end
     else
         local fraction = dx - (dy >> 1)
@@ -365,7 +371,7 @@ function Dungeon:buildTile(r, c)
 
             local visible =  self:renderTile(x0, y0, _tile.id)
             if visible != nil then return visible end
-            --self.buffer[flr(y0) * pitch + flr(x0)] = color
+
         end
     end
 
@@ -388,6 +394,13 @@ function Dungeon:buildTile(r, c)
                     tile.wv = false
                 else
                     mset(j,i, 16+6)
+                end
+            elseif tile.class == Dungeon.Tile_Types.Soil then
+                if tile.wv then
+                    mset(j,i, 0x7)
+                    tile.wv = false
+                else
+                    mset(j,i, 0x8)
                 end
             end
 
