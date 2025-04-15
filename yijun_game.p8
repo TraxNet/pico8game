@@ -27,11 +27,14 @@ function _init()
     local root = level:getRoomTree()
     level:buildCorridors(root)
     level:addStaircases(2)
-    level:computeVisibility()
+    --level:computeVisibility()
+    
     level:printMap()
 
     _entities.Player.y = level.startPosition.y
     _entities.Player.x = level.startPosition.x
+
+    level:renderToMap(_entities.Player.y, _entities.Player.x)
 end
 
 function _update60()
@@ -40,28 +43,39 @@ function _update60()
     if btnp(0) then -- left 
         if level:getTile(_entities.Player.y, _entities.Player.x-1).class&0x20 != 0x20 then
             _entities.Player.x -= 1
+            moved = true
         end
     elseif btnp(1) then -- right
         if level:getTile(_entities.Player.y, _entities.Player.x+1).class&0x20 != 0x20 then
             _entities.Player.x += 1
+            moved = true
         end
     elseif btnp(2) then -- up
         if level:getTile(_entities.Player.y-1, _entities.Player.x).class&0x20 != 0x20 then
             _entities.Player.y -= 1
+            moved = true
         end
     elseif btnp(3) then
         if level:getTile(_entities.Player.y+1, _entities.Player.x).class&0x20 != 0x20 then
             _entities.Player.y += 1
+            moved = true
         end
+    else
+        moved = false
     end
 end
 
 
 function _draw()
     cls()
-    level:renderToMap(_entities.Player.y, _entities.Player.x) 
+    if moved then
+        level:renderToMap(_entities.Player.y, _entities.Player.x) 
+    end
+    
     map(0, 0, 0, 0, 32,32)
 
+    level:RenderVisibilityMap()
+    pset(_entities.Player.x*1, _entities.Player.y*1, 10)
     entities_draw()
 end
 

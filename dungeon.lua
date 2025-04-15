@@ -71,7 +71,8 @@ function Dungeon.new(height, width)
       endRoom=nil,
       maxRoomSize = ceil(min(height, width)/10)+3,
       maxRooms = ceil(max(height, width)/Dungeon.MIN_ROOM_SIZE)+15,
-      walls = {}
+      walls = {},
+      visibilityMap = {} -- slooooow stuff
     }
 
     dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)+3
@@ -87,18 +88,30 @@ function Dungeon:initMap()
     -- Create void
     for i=-1,self.height+1 do
         self.matrix[i] = {}
+        self.visibilityMap[i] = {}
         --printh("init["..i.."]")
         for j=-1,self.width+1 do
             self.matrix[i][j] = {
                 class = Dungeon.Tile_Types.Empty,
                 id = "id"..i..j,
-                roomId = 0
+                roomId = 0,
+                wv = false
             }
+
+            self.visibilityMap[i][j] = 0
         end
     end
 
     --self:addWalls(0, 0, self.height+1, self.width+1)
 end 
+
+function Dungeon:clearVisibilityMap()
+    for i=-1,self.height+1 do
+        for j=-1,self.width+1 do
+            self.visibilityMap[i][j] = 0
+        end
+    end
+end
 
 
 function Dungeon:printMap()
@@ -256,136 +269,51 @@ function Dungeon:buildTile(r, c)
     end
  end
 
-
- --[[function Dungeon:lineCol(from, to)
-    local dx = to.x - from.x
-    local dy = to.y - from.y
-    local m = dy/dx
-    for x=from.x,to.x do
-        local y = flr(m*(x - from.x) + from.y)
-
-        --printh("from:"..from.x..""..from.y.." to:"..to.x.." "..to.y.." line:"..x.." "..y)
-        pset(x*8, y*8, 5)
-        local tile = self:getTile(y, x)
-        if tile and (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall or tile.class == Dungeon.Tile_Types.Empty) then
-            return true
-        end
-       
-    end
-
-    return false
- end]]
-
-
- --[[function Dungeon:lineCol(x0, y0, x1, y1, tile_id)
-    local dx = x1 - x0;
-    local dy = y1 - y0;
-
-        if (dx ~= 0) then
-            m = dy / dx;
-        else 
-            m = sgn(dy)
-        end
-
-        local b = y0 - m*x0;
-        if x1 > x0 then
-            dx = 1
-        else
-            dx = -1
-        end
-        while x0 ~= x1 do
-            x0 = (x0 + dx)
-            y0 = (m*x0 + b);
-            
-
-            local tile = self:getTile(flr(y0), flr(x0))
-            if tile and (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall or tile.class == Dungeon.Tile_Types.Empty) then
-                if tile.id == tile_id then 
-                    return true 
-                end
-
-                return false
+ function Dungeon:renderTile(x0, y0, tile_id)
+        local tile = self:getTile(y0, x0)
+        if tile.id == tile_id then 
+            --pset(x0*1+4, y0*1+4, 12)
+            if tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then                
+                mset(x0,y0, 16+band(tile.class,0x0F))
+                self.visibilityMap[y0][x0] = 12
+                --pset(x0, y0, 12)
+            else
+                self.visibilityMap[y0][x0] = 8
+                --pset(x0, y0, 8)
             end
 
-            pset(flr(x0)*8+4, flr(y0)*8+4, 8)
+            tile.wv = true
+            return true 
         end
 
- 
-
-    return false
- end
- ]]
-
- function lineCircleIntersect(_cx, _cy, _r, _x1, _y1, _x2, _y2)
-    local _cx = _x1 - _cx
-    local _cy = _y1 - _cy
-
-    local _vx  = _x2 - _x1
-    local _vy  = _y2 - _y1
-    local _a   = _vx * _vx + _vy * _vy
-    local _b   = 2.0 * (_vx * _cx + _vy * _cy)
-    local _c   = _cx * _cx + _cy * _cy - _r * _r
-    local _det = _b * _b - 4.0 * _a * _c
-
-    if (_a <= 0.000001 or _det < 0) then
-        return false;
-    elseif (_det == 0) then
-        --local var _t = -_b / (2 * _a);
-        --local var _p1 = { X : _x1 + _t * _vx, Y : _y1 + _t * _vy };
-        --return [_p1, _p1];
-        return false
-    else
-        --printh("intersec")
         
-    
-        _det = sqrt(_det)
-        local _t1 = (-_b - _det) / (2 * _a)
-        local _t2 = (-_b + _det) / (2 * _a)
-
-        if( _t1 >= 0 and _t1 <= 1 ) then
-
-            return true 
+        if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
+            mset(x0,y0, 16+band(tile.class,0x0F))
+            self.visibilityMap[y0][x0] = 12
+            --pset(x0, y0, 12)
+            return false
         end
 
-        if( _t2 >= 0 and _t2 <= 1 ) then
-            return true 
+        if self.visibilityMap[y0][x0] != 12 then
+            self.visibilityMap[y0][x0] = 8
+            --pset(x0, y0, 8)
         end
-        --[[
-        // El primer punto es el más cercano a [_x1, _y1]
-        return [{ X : _x1 + _t1 * _vx, Y : _y1 + _t1 * _vy },
-                { X : _x1 + _t2 * _vx, Y : _y1 + _t2 * _vy }];
-        ]]
-        return false
-    end
+
+        tile.wv = false
+        return nil
  end
 
 
- function Dungeon:checkTileVisibility(r, c, y, x)
-    for w in all(self.walls) do
-       
-        if (w.r != r) and (w.c != c) then
-            --printh("w "..w.r.." "..w.c)
-            if lineCircleIntersect(w.c, w.r, 1, x, y, c, r) then return false end
-        end
-    end
-
-    return true
- end
-
- function Dungeon:computeVisibility()
+ function Dungeon:RenderVisibilityMap()
     for i=0,self.height do
-        for j=0,self.width do   
-
-            local tile = self:getTile(i, j)
-            if tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then 
-                add(self.walls, {r=i, c=j})
-            end
+        for j=0,self.width do  
+            pset(j, i, self.visibilityMap[i][j])
         end
     end
  end
 
 
- function Dungeon:lineCol(_x0, _y0, x1, y1, tile_id)
+ function Dungeon:lineCol(_x0, _y0, x1, y1, _tile)
     local x0 = _x0
     local y0 = _y0
     local dx = x1 - x0;
@@ -407,7 +335,6 @@ function Dungeon:buildTile(r, c)
     end
 
     
-
     --self.buffer[x0 + y0 * pitch] = color
     if dx > dy then
         local fraction = dy - ( dx >> 1 )
@@ -420,25 +347,9 @@ function Dungeon:buildTile(r, c)
             x0 = x0 + stepx
             fraction = fraction + dy
 
-            local flrx0, flry0 = flr(y0), flr(x0)
-
+            local visible =  self:renderTile(x0, y0, _tile.id)
+            if visible != nil then return visible end
             
-            local tile = self:getTile(y0, x0)
-            if tile.id == tile_id then 
-                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
-                return true 
-            end
-
-            
-            if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) or (tile.class == Dungeon.Tile_Types.Empty) then
-                
-                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
-                return false
-            end
-
-            if pget(flrx0, flry0) != 12 then
-                pset(flr(x0)*1+4, flr(y0)*1+4, 8)
-            end
             --self.buffer[flr(y0) * pitch + flr(x0)] = color
         end
     else
@@ -452,20 +363,8 @@ function Dungeon:buildTile(r, c)
             y0 = y0 + stepy
             fraction = fraction + dx
 
-            local tile = self:getTile(y0, x0)
-            if tile.id == tile_id then 
-                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
-                return true 
-            end
-
-            if (tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) or (tile.class == Dungeon.Tile_Types.Empty) then
-                pset(flr(x0)*1+4, flr(y0)*1+4, 12)
-                return false
-            end
-
-            if pget(flr(x0), flr(y0)) != 12 then
-                pset(flr(x0)*1+4, flr(y0)*1+4, 8)
-            end
+            local visible =  self:renderTile(x0, y0, _tile.id)
+            if visible != nil then return visible end
             --self.buffer[flr(y0) * pitch + flr(x0)] = color
         end
     end
@@ -475,58 +374,46 @@ function Dungeon:buildTile(r, c)
 
 
  function Dungeon:renderToMap(y, x)
+
+    self:clearVisibilityMap()
+
     for i=0,self.height do
         for j=0,self.width do   
+            --mset(j, i, 30)
 
             local tile = self:getTile(i, j)
             if  tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall then
-                mset(j,i, 16+6)
+                if tile.wv then
+                    mset(j,i, 16+band(tile.class,0x0F)+3)
+                    tile.wv = false
+                else
+                    mset(j,i, 16+6)
+                end
             end
 
             if tile.class != Dungeon.Tile_Types.Empty then
             
                 local d = getDist({y, x}, {i, j})
                 local dist = d
-                local visible = self:lineCol(x, y, j, i, tile.id)
-                if visible then
-                    
-                    if dist >= 7 then
-                        dist = 6
-                    elseif dist > 6 then
-                
-                        dist = 3
-                    elseif dist > 5 then
-                
-                        dist = 3
-                    elseif dist <= 4 then
-                        dist = 0
-                    end  
-            
-                end
-            
-                if dist < 1.5 then
-                    dist = 0
-                end
-                
-                
-                --printh(dist)
+                local visible = self:lineCol(x, y, j, i, tile)
+                --[[
                 
                 if(visible and tile.class&Dungeon.Tile_Types.Wall == Dungeon.Tile_Types.Wall) then
                     --if dist == 6 then printh("we"..d.." "..y.." "..x.." ".." "..i.." "..j.." v"..tonum(visible)) end
                     --mset(j,i, 16+band(tile.class,0x0F)+dist)
-                    mset(j,i, 16)
+                    --mset(j,i, 16)
                 elseif dist != 9 and tile.class == Dungeon.Tile_Types.DownStairCase then
                     
                     mset(j,i, 0x05)
                     
                 elseif dist != 9 and tile.class == Dungeon.Tile_Types.UpStairCase then
                     mset(j,i, 0x06)
-                end
+                end]]
             end
         end
     end
 
-    pset(x*1+4, y*1+4, 10)
+    
 end
 
 
