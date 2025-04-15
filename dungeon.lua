@@ -475,7 +475,7 @@ function Dungeon:placeStaircase(room, staircases)
         self:getTile(row, col).class=Dungeon.Tile_Types.DownStairCase
     else
         self:getTile(row, col).class=Dungeon.Tile_Types.UpStairCase
-        self.startPosition = {y = row, x = col}
+        self.start = {y = row, x = col}
     end
 
     room.hasStaircase = true

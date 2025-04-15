@@ -7,14 +7,14 @@ __lua__
 #include dungeon.lua
 
 
-_entities = {}
-_entities.Player = create_entity(0, 0, 0)
+_ents = {}
+_ents.Player = create_entity(0, 0, 0)
 
-_entities.Player.update = function(self, ticks)
+_ents.Player.update = function(self, ticks)
 
 end
 
-_entities.Player.draw = function(self, ticks)
+_ents.Player.draw = function(self, ticks)
     spr(self.sprite, self.x*8, self.y*8)
 end
 
@@ -30,33 +30,33 @@ function _init()
     
     --level:printMap()
 
-    _entities.Player.y = level.startPosition.y
-    _entities.Player.x = level.startPosition.x
+    _ents.Player.y = level.start.y
+    _ents.Player.x = level.start.x
 
-    level:renderToMap(_entities.Player.y, _entities.Player.x)
+    level:renderToMap(_ents.Player.y, _ents.Player.x)
 end
 
 function _update60()
     entities_update()
 
     if btnp(0) then -- left 
-        if level:getTile(_entities.Player.y, _entities.Player.x-1).class&0x20 != 0x20 then
-            _entities.Player.x -= 1
+        if level:getTile(_ents.Player.y, _ents.Player.x-1).class&0x20 != 0x20 then
+            _ents.Player.x -= 1
             moved = true
         end
     elseif btnp(1) then -- right
-        if level:getTile(_entities.Player.y, _entities.Player.x+1).class&0x20 != 0x20 then
-            _entities.Player.x += 1
+        if level:getTile(_ents.Player.y, _ents.Player.x+1).class&0x20 != 0x20 then
+            _ents.Player.x += 1
             moved = true
         end
     elseif btnp(2) then -- up
-        if level:getTile(_entities.Player.y-1, _entities.Player.x).class&0x20 != 0x20 then
-            _entities.Player.y -= 1
+        if level:getTile(_ents.Player.y-1, _ents.Player.x).class&0x20 != 0x20 then
+            _ents.Player.y -= 1
             moved = true
         end
     elseif btnp(3) then
-        if level:getTile(_entities.Player.y+1, _entities.Player.x).class&0x20 != 0x20 then
-            _entities.Player.y += 1
+        if level:getTile(_ents.Player.y+1, _ents.Player.x).class&0x20 != 0x20 then
+            _ents.Player.y += 1
             moved = true
         end
     else
@@ -68,15 +68,22 @@ end
 function _draw()
     cls()
     if moved then
-        level:renderToMap(_entities.Player.y, _entities.Player.x) 
+        level:renderToMap(_ents.Player.y, _ents.Player.x) 
     end
     
     map(0, 0, 0, 0, 32,32)
 
     level:RenderVisibilityMap()
-    pset(_entities.Player.x*1, _entities.Player.y*1, 10)
+    pset(_ents.Player.x*1, _ents.Player.y*1, 10)
     entities_draw()
 end
+
+-->8
+-- Shading effects
+function shader(x, y)
+
+end
+
 
 __gfx__
 000155000001550000155000000000000000000055d5565555551515555555551111111100000000000000000000000000000000000000000000000000000000
