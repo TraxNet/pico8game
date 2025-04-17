@@ -80,8 +80,12 @@ end
 
 -->8
 -- Shading effects
-function shader(x, y)
-
+function shader(sx, sy)
+    for s=sy, sx+32 do
+        for c=sx, sx+32 do
+            --local dp = poke()
+        end
+    end
 end
 
 
