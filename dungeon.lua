@@ -72,7 +72,7 @@ function Dungeon.new(height, width)
       maxRoomSize = ceil(min(height, width)/10)+3,
       maxRooms = ceil(max(height, width)/Dungeon.MIN_ROOM_SIZE)+15,
       walls = {},
-      visibilityMap = {} -- slooooow stuff
+      visibilityMap = {}, -- slooooow stuff
     }
 
     dungeon.scatteringFactor = ceil(max(height,width)/dungeon.maxRoomSize)+3
@@ -95,7 +95,8 @@ function Dungeon:initMap()
                 class = Dungeon.Tile_Types.Empty,
                 id = "id"..i..j,
                 roomId = 0,
-                wv = false
+                wv = false,
+                _type = 0
             }
 
             self.visibilityMap[i][j] = 0
@@ -175,7 +176,7 @@ function Dungeon:buildRoom(startR, startC, endR, endC)
             local tile = self:getTile(i,j)
             --self.matrix[i][j] = Dungeon.Tile_Types.Soil -- Randomize by theme/room type
       
-            tile.roomId, tile.class = id, Dungeon.Tile_Types.Soil
+            tile.roomId, tile.class, tile._type = id, Dungeon.Tile_Types.Soil, rnd({0, 1, 2, 3, 4, 5, 6, 7})
 
         end
     end
@@ -299,7 +300,7 @@ function Dungeon:buildTile(r, c)
         if tile.class == Dungeon.Tile_Types.DownStairCase then             
             mset(x0,y0, 0x05)     
         elseif tile.class == Dungeon.Tile_Types.Soil then
-            mset(x0,y0, 0x07) 
+            --mset(x0,y0, 0x1F+tile._type) 
         elseif tile.class == Dungeon.Tile_Types.UpStairCase then
             mset(x0,y0, 0x06)
         end
@@ -397,10 +398,11 @@ function Dungeon:buildTile(r, c)
                 end
             elseif tile.class == Dungeon.Tile_Types.Soil then
                 if tile.wv then
-                    mset(j,i, 0x7)
+                    mset(j,i, 0x20+tile._type)
                     tile.wv = false
                 else
-                    mset(j,i, 0x8)
+                    mset(j,i, 0x30+(tile._type>>2))
+                    --mset(j,i, 0x2F+tile._type)
                 end
             end
 

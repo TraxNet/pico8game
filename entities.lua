@@ -48,6 +48,8 @@ do
         return _highest_id
     end
 
+    _entities = {}
+
     meta_entity = {
         __add = function(a, b)
             a.x += b.x
@@ -74,6 +76,7 @@ do
             end,
         }
         setmetatable(e, meta_entity)
+        add(_entities, e)
         return e
     end
 
